@@ -57,33 +57,38 @@ module.exports = function (app) {
     
     .put(function (req, res) {
       let project = req.params.project;
-      const { _id, issue_title, issue_text, assigned_to, status_text } = req.body;
-
+      const { _id, issue_title, issue_text, created_by, assigned_to, status_text, open } = req.body;
+    
       if (!_id) {
         return res.json({ error: 'missing _id' });
       }
-
-      let issues = issuesData[project] || [];
-      const issueIndex = issues.findIndex(issue => issue._id === _id);
-
-      if (issueIndex === -1) {
+    
+      const issues = issuesData[project] || [];
+      const issue = issues.find(i => i._id === _id);
+    
+      if (!issue) {
         return res.json({ error: 'could not update', _id });
       }
-
-      const issue = issues[issueIndex];
+    
       const updateFields = {};
-
       if (issue_title) updateFields.issue_title = issue_title;
       if (issue_text) updateFields.issue_text = issue_text;
+      if (created_by) updateFields.created_by = created_by;
       if (assigned_to) updateFields.assigned_to = assigned_to;
       if (status_text) updateFields.status_text = status_text;
-
-      if (Object.keys(updateFields).length > 0) {
+      if (open !== undefined) updateFields.open = open;
+    
+      if (Object.keys(updateFields).length === 0) {
+        return res.json({ error: 'no update field(s) sent', _id });
+      }
+    
+      try {
         Object.assign(issue, updateFields);
         issue.updated_on = new Date().toISOString();
+    
         return res.json({ result: 'successfully updated', _id });
-      } else {
-        return res.json({ error: 'no update field(s) sent', _id });
+      } catch (err) {
+        return res.json({ error: 'could not update', _id });
       }
     })
     
