@@ -56,47 +56,40 @@ module.exports = function (app) {
     })
     
     .put(function (req, res) {
-      const project = req.params.project;
-      const { _id, ...fields } = req.body;
+      let project = req.params.project;
+      const { _id, issue_title, issue_text, assigned_to, status_text } = req.body;
 
       if (!_id) {
-        return res
-          .type('application/json')
-          .send(JSON.stringify({ error: 'missing _id', _id: undefined }));
+        return res.json({ error: 'missing _id' });
       }
 
-      const issueList = Array.isArray(issuesData[project]) ? issuesData[project] : [];
-      const issue = issueList.find(i => i._id === _id);
+      let issues = issuesData[project] || [];
+      const issueIndex = issues.findIndex(issue => issue._id === _id);
 
-      if (!issue) {
-        return res.json({ error: 'could not update', '_id': _id });
+      if (issueIndex === -1) {
+        return res.json({ error: 'could not update', _id });
       }
 
-      const updateKeys = ['issue_title', 'issue_text', 'created_by', 'assigned_to', 'status_text', 'open'];
-      const hasUpdates = updateKeys.some(key => fields[key] !== undefined && fields[key] !== '');
-    
-      if (!hasUpdates) {
-        return res.json({ error: 'no update field(s) sent', '_id': _id });
+      const issue = issues[issueIndex];
+      const updateFields = {};
+
+      if (issue_title) updateFields.issue_title = issue_title;
+      if (issue_text) updateFields.issue_text = issue_text;
+      if (assigned_to) updateFields.assigned_to = assigned_to;
+      if (status_text) updateFields.status_text = status_text;
+
+      if (Object.keys(updateFields).length > 0) {
+        Object.assign(issue, updateFields);
+        issue.updated_on = new Date().toISOString();
+        return res.json({ result: 'successfully updated', _id });
+      } else {
+        return res.json({ error: 'no update field(s) sent', _id });
       }
-
-      updateKeys.forEach(key => {
-        if (fields[key] !== undefined && fields[key] !== '') {
-          if (key === 'open') {
-            issue[key] = fields[key] === 'false' ? false : true;
-          } else {
-            issue[key] = fields[key];
-          }
-        }
-      });
-
-      issue.updated_on = new Date().toISOString();
-    
-      return res.json({ result: 'successfully updated', '_id': _id });
     })
     
     .delete(function (req, res){
       let project = req.params.project;
-      const { _id } = req.body;
+      let { _id } = req.body;
 
       if (!_id) return res.json({ error: 'missing _id' });
 

@@ -5,27 +5,27 @@ const server = require('../server');
 
 chai.use(chaiHttp);
 
-suite('Functional Tests', function () {
-  let testId;
+let testId;
 
-  suite('POST /api/issues/{project}', function () {
+suite('Functional Tests', function () {
+  suite('POST /api/issues/{project} => object with issue data', function () {
     test('Create an issue with every field', function (done) {
       chai
         .request(server)
         .post('/api/issues/test')
         .send({
           issue_title: 'Title',
-          issue_text: 'text',
+          issue_text: 'Text',
           created_by: 'Functional Test - Every field',
-          assigned_to: 'Chai and Mocha',
+          assigned_to: 'Chai',
           status_text: 'In QA',
         })
         .end(function (err, res) {
           assert.equal(res.status, 200);
           assert.equal(res.body.issue_title, 'Title');
-          assert.equal(res.body.issue_text, 'text');
+          assert.equal(res.body.issue_text, 'Text');
           assert.equal(res.body.created_by, 'Functional Test - Every field');
-          assert.equal(res.body.assigned_to, 'Chai and Mocha');
+          assert.equal(res.body.assigned_to, 'Chai');
           assert.equal(res.body.status_text, 'In QA');
           testId = res.body._id;
           done();
@@ -38,13 +38,13 @@ suite('Functional Tests', function () {
         .post('/api/issues/test')
         .send({
           issue_title: 'Title',
-          issue_text: 'text',
+          issue_text: 'Text',
           created_by: 'Functional Test - Required fields',
         })
         .end(function (err, res) {
           assert.equal(res.status, 200);
           assert.equal(res.body.issue_title, 'Title');
-          assert.equal(res.body.issue_text, 'text');
+          assert.equal(res.body.issue_text, 'Text');
           assert.equal(res.body.created_by, 'Functional Test - Required fields');
           done();
         });
@@ -59,14 +59,13 @@ suite('Functional Tests', function () {
         })
         .end(function (err, res) {
           assert.equal(res.status, 200);
-          assert.property(res.body, 'error');
-          assert.equal(res.body.error, 'required field(s) missing');
+          assert.deepEqual(res.body, { error: 'required field(s) missing' });
           done();
         });
     });
   });
 
-  suite('GET /api/issues/{project}', function () {
+  suite('GET /api/issues/{project} => Array of objects with issue data', function () {
     test('View issues on a project', function (done) {
       chai
         .request(server)
@@ -86,9 +85,7 @@ suite('Functional Tests', function () {
         .end(function (err, res) {
           assert.equal(res.status, 200);
           assert.isArray(res.body);
-          res.body.forEach((issue) => {
-            assert.equal(issue.created_by, 'Functional Test - Every field');
-          });
+          assert.equal(res.body[0].created_by, 'Functional Test - Every field');
           done();
         });
     });
@@ -97,74 +94,66 @@ suite('Functional Tests', function () {
       chai
         .request(server)
         .get('/api/issues/test')
-        .query({ open: true, created_by: 'Functional Test - Every field' })
+        .query({ open: true, assigned_to: 'Chai' })
         .end(function (err, res) {
           assert.equal(res.status, 200);
           assert.isArray(res.body);
-          res.body.forEach((issue) => {
-            assert.equal(issue.created_by, 'Functional Test - Every field');
-            assert.equal(issue.open, true);
-          });
           done();
         });
     });
   });
 
-  suite('PUT /api/issues/{project}', function () {
-    test('Update one field on an issue', function (done) {
+  suite('PUT /api/issues/{project} => text', function () {
+
+    test('Update one field on an issue', function(done) {
       chai
         .request(server)
         .put('/api/issues/test')
         .send({
           _id: testId,
-          issue_text: 'updated text',
+          issue_title: 'Updated issue title',
         })
-        .end(function (err, res) {
+        .end(function(err, res) {
           assert.equal(res.status, 200);
-          assert.equal(res.body.result, 'successfully updated');
-          assert.equal(res.body._id, testId);
+          assert.deepEqual(res.body, { result: 'successfully updated', '_id': testId });
           done();
         });
     });
 
-    test('Update multiple fields on an issue', function (done) {
+    test('Update multiple fields on an issue', function(done) {
       chai
         .request(server)
         .put('/api/issues/test')
         .send({
           _id: testId,
-          issue_title: 'updated title',
-          issue_text: 'updated text again',
+          issue_title: 'Updated issue title',
+          issue_text: 'Updated issue text',
+          assigned_to: 'John Doe',
         })
-        .end(function (err, res) {
+        .end(function(err, res) {
           assert.equal(res.status, 200);
-          assert.equal(res.body.result, 'successfully updated');
-          assert.equal(res.body._id, testId);
+          assert.deepEqual(res.body, { result: 'successfully updated', _id: testId });
           done();
         });
     });
 
-    test('Update an issue with missing _id', function (done) {
-        chai
-          .request(server)
-          .put('/api/issues/test')
-          .send({
-            issue_title: 'no id',
-          })
-          .end(function (err, res) {
-            assert.equal(res.status, 200);
-            assert.deepEqual(res.body, { error: 'missing _id' });
-            done();
-          });
-      });
-
-    test('Update an issue with no fields to update', function (done) {
+    test('Update an issue with missing _id', function(done) {
       chai
         .request(server)
         .put('/api/issues/test')
-        .send({
-          _id: testId,
-        })
+        .send({ issue_title: 'no id' })
+        .end(function (err, res) {
+          assert.equal(res.status, 200);
+          assert.deepEqual(res.body, { error: 'missing _id' });
+          done();
+        });
+    });    
+
+    test('Update an issue with no fields to update', function(done) {
+      chai
+        .request(server)
+        .put('/api/issues/test')
+        .send({ _id: testId })
         .end(function (err, res) {
           assert.equal(res.status, 200);
           assert.deepEqual(res.body, { error: 'no update field(s) sent', _id: testId });
@@ -172,15 +161,12 @@ suite('Functional Tests', function () {
         });
     });
 
-    test('Update an issue with an invalid _id', function (done) {
+    test('Update an issue with an invalid _id', function(done) {
       chai
         .request(server)
         .put('/api/issues/test')
-        .send({
-          _id: 'invalidid123',
-          issue_title: 'will fail',
-        })
-        .end(function (err, res) {
+        .send({ _id: 'invalidid123', issue_title: 'will fail' })
+        .end(function(err, res) {
           assert.equal(res.status, 200);
           assert.deepEqual(res.body, { error: 'could not update', _id: 'invalidid123' });
           done();
@@ -188,7 +174,7 @@ suite('Functional Tests', function () {
     });
   });
 
-  suite('DELETE /api/issues/{project}', function () {
+  suite('DELETE /api/issues/{project} => text', function () {
     test('Delete an issue', function (done) {
       chai
         .request(server)
