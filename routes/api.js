@@ -63,32 +63,39 @@ module.exports = function (app) {
         return res.json({ error: 'missing _id' });
       }
     
-      const issues = issuesData[project] || [];
-      const issue = issues.find(i => i._id === _id);
-    
-      if (!issue) {
-        return res.json({ error: 'could not update', _id });
-      }
-    
-      const updateFields = {};
-      if (issue_title) updateFields.issue_title = issue_title;
-      if (issue_text) updateFields.issue_text = issue_text;
-      if (created_by) updateFields.created_by = created_by;
-      if (assigned_to) updateFields.assigned_to = assigned_to;
-      if (status_text) updateFields.status_text = status_text;
-      if (open !== undefined) updateFields.open = open;
-    
-      if (Object.keys(updateFields).length === 0) {
+      if (
+        issue_title === undefined &&
+        issue_text === undefined &&
+        created_by === undefined &&
+        assigned_to === undefined &&
+        status_text === undefined &&
+        open === undefined
+      ) {
         return res.json({ error: 'no update field(s) sent', _id });
       }
     
-      try {
-        Object.assign(issue, updateFields);
-        issue.updated_on = new Date().toISOString();
+      const updateFields = {};
+      if (issue_title !== undefined) updateFields.issue_title = issue_title;
+      if (issue_text !== undefined) updateFields.issue_text = issue_text;
+      if (created_by !== undefined) updateFields.created_by = created_by;
+      if (assigned_to !== undefined) updateFields.assigned_to = assigned_to;
+      if (status_text !== undefined) updateFields.status_text = status_text;
+      if (open !== undefined) updateFields.open = open;
     
-        return res.json({ result: 'successfully updated', _id });
+      updateFields.updated_on = new Date().toISOString();
+    
+      try {
+        const issues = issuesData[project] || [];
+        const issue = issues.find(i => i._id === _id);
+    
+        if (!issue) {
+          return res.json({ error: 'could not update', _id });
+        }
+    
+        Object.assign(issue, updateFields);
+        res.json({ result: 'successfully updated', _id });
       } catch (err) {
-        return res.json({ error: 'could not update', _id });
+        res.json({ error: 'could not update', _id });
       }
     })
     
